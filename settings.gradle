@@ -1,0 +1,5 @@
+rootProject.name = 'Vanilink'
+include 'MinestomLink'
+include 'SpigotLink'
+include 'TestServer'
+

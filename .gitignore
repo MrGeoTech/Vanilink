@@ -1,0 +1,8 @@
+# Project exclude paths
+/.gradle/
+/MinestomLink/build/
+/MinestomLink/build/classes/java/main/
+/SpigotLink/build/
+/SpigotLink/build/classes/java/main/
+/TestServer/build/
+/TestServer/build/classes/java/main/
