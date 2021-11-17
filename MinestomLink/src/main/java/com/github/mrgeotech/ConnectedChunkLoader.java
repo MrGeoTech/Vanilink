@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -51,6 +52,10 @@ public class ConnectedChunkLoader implements ChunkGenerator {
             channel.close();
             buffer.clear();
 
+            System.out.println(output.getBytes(StandardCharsets.UTF_8).length);
+            System.out.println(output.substring(output.length() - 10));
+            output = output.replace("!", "");
+
             String[] blocksAsStrings = output.split(";");
 
             for (int i = 0; i < blocksAsStrings.length - 1; i += 4) {
@@ -60,16 +65,19 @@ public class ConnectedChunkLoader implements ChunkGenerator {
                             Integer.parseInt(blocksAsStrings[i + 2]),
                             Objects.requireNonNull(Block.fromNamespaceId(blocksAsStrings[i + 3])));
                 } catch (NullPointerException e) {
-                    System.out.println(blocksAsStrings[i - 4]);
-                    System.out.println(blocksAsStrings[i - 3]);
-                    System.out.println(blocksAsStrings[i - 2]);
-                    System.out.println(blocksAsStrings[i - 1]);
-                    System.out.println(blocksAsStrings[i]);
-                    System.out.println(blocksAsStrings[i + 1]);
-                    System.out.println(blocksAsStrings[i + 2]);
+                    batch.setBlock(Integer.parseInt(blocksAsStrings[i]),
+                            Integer.parseInt(blocksAsStrings[i + 1]),
+                            Integer.parseInt(blocksAsStrings[i + 2]),
+                            Objects.requireNonNull(Block.AIR));
                     System.out.println(blocksAsStrings[i + 3]);
+                    blocksAsStrings[i + 3] = blocksAsStrings[i + 3].replaceAll("[^\\d.]", "");
+                    System.out.println(blocksAsStrings[i + 3]);
+                    i--;
+                } catch (NumberFormatException e) {
                     System.out.println(i);
+                    i -= 5;
                 } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
 

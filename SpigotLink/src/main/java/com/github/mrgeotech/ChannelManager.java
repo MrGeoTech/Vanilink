@@ -116,13 +116,17 @@ public class ChannelManager implements Runnable {
 
                 output.deleteCharAt(output.length() - 1);
 
+                output.append("!");
+
                 byte[] bytes = output.toString().getBytes(StandardCharsets.UTF_8);
                 System.out.println(bytes.length);
                 ByteBuffer buffer = ByteBuffer.allocate(bytes.length);
                 buffer.put(bytes);
                 buffer.flip();
                 try {
-                    channel.write(buffer);
+                    while (buffer.hasRemaining()) {
+                        channel.write(buffer);
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
