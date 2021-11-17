@@ -41,7 +41,7 @@ public class ConnectedChunkLoader implements ChunkGenerator {
 
             System.out.println("Getting chunk data!");
 
-            buffer = ByteBuffer.allocate(865176);
+            buffer = ByteBuffer.allocate(1000000);
             while (channel.read(buffer) > 0) {
                 output += new String(buffer.array()).trim();
             }
@@ -51,7 +51,7 @@ public class ConnectedChunkLoader implements ChunkGenerator {
             channel.close();
             buffer.clear();
 
-            String[] blocksAsStrings = output.split(",");
+            String[] blocksAsStrings = output.split(";");
 
             for (int i = 0; i < blocksAsStrings.length - 1; i += 4) {
                 try {
@@ -59,6 +59,16 @@ public class ConnectedChunkLoader implements ChunkGenerator {
                             Integer.parseInt(blocksAsStrings[i + 1]),
                             Integer.parseInt(blocksAsStrings[i + 2]),
                             Objects.requireNonNull(Block.fromNamespaceId(blocksAsStrings[i + 3])));
+                } catch (NullPointerException e) {
+                    System.out.println(blocksAsStrings[i - 4]);
+                    System.out.println(blocksAsStrings[i - 3]);
+                    System.out.println(blocksAsStrings[i - 2]);
+                    System.out.println(blocksAsStrings[i - 1]);
+                    System.out.println(blocksAsStrings[i]);
+                    System.out.println(blocksAsStrings[i + 1]);
+                    System.out.println(blocksAsStrings[i + 2]);
+                    System.out.println(blocksAsStrings[i + 3]);
+                    System.out.println(i);
                 } catch (Exception e) {
                 }
             }

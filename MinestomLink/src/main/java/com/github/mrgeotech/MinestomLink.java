@@ -20,11 +20,11 @@ public class MinestomLink extends Extension {
         container.setChunkGenerator(new ConnectedChunkLoader("localhost", 20000));
         MinecraftServer.getInstanceManager().registerInstance(container);
         container.loadChunk(0, 0);
-        for (int x = -8; x <= 8; x++) {
+        /*for (int x = -8; x <= 8; x++) {
             for (int y = -8; y <= 8; y++) {
                 container.loadChunk(x, y);
             }
-        }
+        }*/
         super.getEventNode().addListener(PlayerLoginEvent.class, event -> {
             Pos spawn = new Pos(0, 65, 0);
             while (!container.getBlock((int) spawn.x(), (int) spawn.y(), (int) spawn.z(), BlockGetter.Condition.TYPE).isAir()) {

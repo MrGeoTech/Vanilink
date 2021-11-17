@@ -98,20 +98,18 @@ public class ChannelManager implements Runnable {
 
         if (request[0].equalsIgnoreCase("c")) {
             System.out.println("c");
-            Chunk chunk = Bukkit.getWorld("world").getChunkAt(Integer.parseInt(request[1]), Integer.parseInt(request[2]));
-            if (!chunk.isLoaded()) {
-                chunk.load();
-                Bukkit.getScheduler().runTaskLater(this.main, (Runnable) chunk::unload, 1000);
-            }
+            Chunk chunk = loadChunks(Integer.parseInt(request[1]), Integer.parseInt(request[2]));
 
             System.out.println("Async");
             Bukkit.getScheduler().runTaskAsynchronously(this.main, () -> {
                 StringBuilder output = new StringBuilder();
 
+                while (!chunk.isLoaded()) {}
+
                 for (int x = 0; x < 16; x++) {
                     for (int y = 0; y < 256; y++) {
                         for (int z = 0; z < 16; z++) {
-                            output.append(x).append(",").append(y).append(",").append(z).append(",").append(chunk.getBlock(x, y, z).getType().getKey().getKey()).append(",");
+                            output.append(x).append(";").append(y).append(";").append(z).append(";").append(chunk.getBlock(x, y, z).getType().getKey().getKey()).append(";");
                         }
                     }
                 }
@@ -136,10 +134,7 @@ public class ChannelManager implements Runnable {
                 }
             });
         } else if (request[0].equalsIgnoreCase("b")) {
-            Chunk chunk = Bukkit.getWorld("world").getChunkAt(Integer.parseInt(request[1]), Integer.parseInt(request[2]));
-            if (!chunk.isLoaded()) {
-                chunk.load();
-            }
+            Chunk chunk = loadChunks(Integer.parseInt(request[1]), Integer.parseInt(request[2]));
 
             Bukkit.getScheduler().runTaskAsynchronously(this.main, () -> {
                 StringBuilder output = new StringBuilder();
@@ -172,12 +167,15 @@ public class ChannelManager implements Runnable {
         }
     }
 
-    private void loadChunks(int x, int z) {
+    private Chunk loadChunks(int x, int z) {
+        Chunk chunk;
         for (int offX = -1; offX <= 1; offX++) {
             for (int offZ = -1; offZ <= 1; offZ++) {
-                Bukkit.getWorld("world").loadChunk(x - offX, z - offZ);
-                Bukkit.getScheduler().runTaskLater(this.main, () -> Bukkit.getWorld("world").unloadChunk(x - offX, z - offZ), 1000);
+                chunk = Bukkit.getWorld("world").getChunkAt(x - offX, z - offZ);
+                chunk.load();
+                Bukkit.getScheduler().runTaskLater(this.main, (Runnable) chunk::unload, 1000);
             }
         }
+        return Bukkit.getWorld("world").getChunkAt(x, z);
     }
 }
