@@ -29,7 +29,7 @@ public class ChannelManager implements Runnable {
         selector = Selector.open();
 
         server = ServerSocketChannel.open();
-        server.bind(new InetSocketAddress(20000));
+        server.bind(new InetSocketAddress(main.getPort()));
         server.configureBlocking(false);
 
         int ops = server.validOps();
@@ -81,9 +81,14 @@ public class ChannelManager implements Runnable {
         ByteBuffer buffer = ByteBuffer.allocate(2048);
         channel.read(buffer);
 
-        String[] request = new String(buffer.array()).trim().split(",");
+        String[] request = new String(buffer.array()).trim().split(";");
 
-        requests.put(channel.getRemoteAddress(), request);
+        if (!request[0].equals(main.getKey())) {
+            channel.close();
+            return;
+        }
+
+        requests.put(channel.getRemoteAddress(), request[1].split(","));
 
         channel.register(selector, SelectionKey.OP_WRITE);
     }

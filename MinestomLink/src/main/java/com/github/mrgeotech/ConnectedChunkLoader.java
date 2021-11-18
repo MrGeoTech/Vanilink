@@ -18,14 +18,9 @@ import java.util.Objects;
 
 public class ConnectedChunkLoader implements ChunkGenerator {
 
-    private InetSocketAddress address;
-
-    public ConnectedChunkLoader(String address, int port) {
-        this.address = new InetSocketAddress(address, port);
-    }
-
     @Override
     public void generateChunkData(ChunkBatch batch, int chunkX, int chunkZ) {
+        InetSocketAddress address = ConfigHandler.getIP();
         try {
             System.out.println("Getting chunk at " + chunkX + "," + chunkZ + "!");
             System.out.println("Connecting to server...");
@@ -34,7 +29,7 @@ public class ConnectedChunkLoader implements ChunkGenerator {
             System.out.println("Connected to server!");
 
             ByteBuffer buffer = ByteBuffer.allocate(2048);
-            buffer.put(("c," + chunkX + "," + chunkZ).getBytes());
+            buffer.put((ConfigHandler.getKey() + ";c," + chunkX + "," + chunkZ).getBytes(StandardCharsets.UTF_8));
             buffer.flip();
             channel.write(buffer);
 
@@ -85,6 +80,7 @@ public class ConnectedChunkLoader implements ChunkGenerator {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        ConfigHandler.removeTask(address);
     }
 
     @Override

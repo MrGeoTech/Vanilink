@@ -9,6 +9,8 @@ import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.block.BlockGetter;
 import net.minestom.server.world.DimensionType;
 
+import java.io.IOException;
+
 public class MinestomLink extends Extension {
 
     private InstanceContainer container;
@@ -16,8 +18,14 @@ public class MinestomLink extends Extension {
     @Override
     public void initialize() {
         System.out.println("Extension loading...");
+        try {
+            ConfigHandler.init();
+        } catch (IOException e) {
+            e.printStackTrace();
+            MinecraftServer.stopCleanly();
+        }
         container = MinecraftServer.getInstanceManager().createInstanceContainer(DimensionType.OVERWORLD);
-        container.setChunkGenerator(new ConnectedChunkLoader("localhost", 20000));
+        container.setChunkGenerator(new ConnectedChunkLoader());
         MinecraftServer.getInstanceManager().registerInstance(container);
         container.loadChunk(0, 0);
         for (int x = -8; x <= 8; x++) {
