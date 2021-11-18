@@ -13,6 +13,7 @@ public class SpigotLink extends JavaPlugin {
     public void onEnable() {
         System.out.println("Enabling...");
         try {
+            saveDefaultConfig();
             channelManager = new ChannelManager(this);
             Bukkit.getScheduler().runTaskTimer(this, channelManager, 1, 2);
         } catch (IOException e) {
@@ -26,7 +27,16 @@ public class SpigotLink extends JavaPlugin {
         System.out.println("Disabling...");
         channelManager.shutdown();
         Bukkit.getScheduler().cancelTasks(this);
+        saveConfig();
         System.out.println("Disabled!");
+    }
+
+    public int getPort() {
+        return getConfig().getInt("port");
+    }
+
+    public String getKey() {
+        return getConfig().getString("key");
     }
 
 }

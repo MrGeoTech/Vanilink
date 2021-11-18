@@ -18,42 +18,29 @@ import java.util.Objects;
 
 public class ConnectedChunkLoader implements ChunkGenerator {
 
-    private InetSocketAddress address;
-
-    public ConnectedChunkLoader(String address, int port) {
-        this.address = new InetSocketAddress(address, port);
-    }
-
     @Override
     public void generateChunkData(ChunkBatch batch, int chunkX, int chunkZ) {
+        InetSocketAddress address = ConfigHandler.getIP();
+        System.out.println("Connecting to server " + address.getHostName() + ":" + address.getPort() + "...");
         try {
-            System.out.println("Getting chunk at " + chunkX + "," + chunkZ + "!");
-            System.out.println("Connecting to server...");
             SocketChannel channel = SocketChannel.open(address);
             channel.configureBlocking(true);
-            System.out.println("Connected to server!");
 
             ByteBuffer buffer = ByteBuffer.allocate(2048);
-            buffer.put(("c," + chunkX + "," + chunkZ).getBytes());
+            buffer.put((ConfigHandler.getKey() + ";c," + chunkX + "," + chunkZ).getBytes(StandardCharsets.UTF_8));
             buffer.flip();
             channel.write(buffer);
 
             String output = "";
-
-            System.out.println("Getting chunk data!");
 
             buffer = ByteBuffer.allocate(1000000);
             while (channel.read(buffer) > 0) {
                 output += new String(buffer.array()).trim();
             }
 
-            System.out.println("Closing channel!");
-
             channel.close();
             buffer.clear();
 
-            System.out.println(output.getBytes(StandardCharsets.UTF_8).length);
-            System.out.println(output.substring(output.length() - 10));
             output = output.replace("!", "");
 
             String[] blocksAsStrings = output.split(";");
@@ -69,22 +56,19 @@ public class ConnectedChunkLoader implements ChunkGenerator {
                             Integer.parseInt(blocksAsStrings[i + 1]),
                             Integer.parseInt(blocksAsStrings[i + 2]),
                             Objects.requireNonNull(Block.AIR));
-                    System.out.println(blocksAsStrings[i + 3]);
                     blocksAsStrings[i + 3] = blocksAsStrings[i + 3].replaceAll("[^\\d.]", "");
-                    System.out.println(blocksAsStrings[i + 3]);
                     i--;
                 } catch (NumberFormatException e) {
-                    System.out.println(i);
                     i -= 5;
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
-
-            System.out.println("Chunk received!");
         } catch (IOException e) {
             e.printStackTrace();
         }
+        System.out.println("Chunk loaded!");
+        ConfigHandler.removeTask(address);
     }
 
     @Override
