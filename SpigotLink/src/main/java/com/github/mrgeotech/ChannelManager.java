@@ -94,7 +94,6 @@ public class ChannelManager implements Runnable {
     }
 
     private void write(SelectionKey key) throws IOException {
-        System.out.println("Writing");
         SocketChannel channel = (SocketChannel) key.channel();
 
         String[] request = requests.get(channel.getRemoteAddress());
@@ -102,10 +101,8 @@ public class ChannelManager implements Runnable {
         channel.register(selector, SelectionKey.OP_CONNECT);
 
         if (request[0].equalsIgnoreCase("c")) {
-            System.out.println("c");
             Chunk chunk = loadChunks(Integer.parseInt(request[1]), Integer.parseInt(request[2]));
 
-            System.out.println("Async");
             Bukkit.getScheduler().runTaskAsynchronously(this.main, () -> {
                 StringBuilder output = new StringBuilder();
 
@@ -124,7 +121,6 @@ public class ChannelManager implements Runnable {
                 output.append("!");
 
                 byte[] bytes = output.toString().getBytes(StandardCharsets.UTF_8);
-                System.out.println(bytes.length);
                 ByteBuffer buffer = ByteBuffer.allocate(bytes.length);
                 buffer.put(bytes);
                 buffer.flip();
@@ -157,7 +153,6 @@ public class ChannelManager implements Runnable {
                 ByteBuffer buffer = ByteBuffer.allocate(2048);
                 byte[] bytes = output.toString().getBytes(StandardCharsets.UTF_8);
                 for (int i = 0; i < bytes.length; i += 2048) {
-                    System.out.println(i);
                     buffer.put(buffer);
                     buffer.flip();
                     try {

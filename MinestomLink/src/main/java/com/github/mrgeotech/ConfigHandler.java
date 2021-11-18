@@ -4,7 +4,7 @@ import net.minestom.server.MinecraftServer;
 
 import java.io.*;
 import java.net.InetSocketAddress;
-import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,7 +14,7 @@ public class ConfigHandler {
     private static String key;
 
     public static void init() throws IOException {
-        File file = new File(Paths.get("").toFile(), "vanilla-ips.txt");
+        File file = new File(System.getProperty("user.dir"), "vanilla-ips.txt");
         if (file.createNewFile()) {
             System.out.println("No vanilla ips found! File has been created! Please add ips to vanilla servers that you have running with the connector plugin!");
             MinecraftServer.stopCleanly();
@@ -28,6 +28,7 @@ public class ConfigHandler {
                 String[] ip = reader.readLine().split(":");
                 ips.put(new InetSocketAddress(ip[0], Integer.parseInt(ip[1])), 0);
             }
+            System.out.println("Found ips: " + Arrays.toString(ips.keySet().toArray(new InetSocketAddress[0])));
             if (ips.size() < 1) throw new NullPointerException();
         } catch (Exception e) {
             System.err.println("An error occurred reading your vanilla ips! Please check that there is at least one ip and that they follow the format of '<address>:<port>'!");
@@ -41,6 +42,7 @@ public class ConfigHandler {
             if (ips.get(lowest) > ips.get(address))
                 lowest = address;
         }
+        ips.put(lowest, ips.get(lowest) + 1);
         return lowest;
     }
 
