@@ -22,4 +22,6 @@ repositories {
 
 dependencies {
     compileOnly 'org.spigotmc:spigot-api:1.17-R0.1-SNAPSHOT'
+    implementation 'io.github.jglrxavpok.hephaistos:common:2.2.0'
+    implementation 'com.github.luben:zstd-jni:1.2.0-2'
 }

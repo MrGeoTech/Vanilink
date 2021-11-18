@@ -1,8 +1,12 @@
 package com.github.mrgeotech;
 
+import com.github.luben.zstd.Zstd;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
+import org.bukkit.ChunkSnapshot;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -12,14 +16,13 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.*;
 
 public class ChannelManager implements Runnable {
 
     private Selector selector;
     private ServerSocketChannel server;
-    private HashMap<SocketAddress, String[]> requests;
+    private HashMap<SocketAddress, Integer[]> requests;
     private SpigotLink main;
 
     public ChannelManager(SpigotLink main) throws IOException {
@@ -78,17 +81,14 @@ public class ChannelManager implements Runnable {
     private void read(SelectionKey key) throws IOException {
         SocketChannel channel = (SocketChannel) key.channel();
 
-        ByteBuffer buffer = ByteBuffer.allocate(2048);
+        ByteBuffer buffer = ByteBuffer.allocate(9);
         channel.read(buffer);
 
-        String[] request = new String(buffer.array()).trim().split(";");
+        byte packetId = buffer.get();
+        int chunkX = buffer.getInt();
+        int chunkZ = buffer.getInt();
 
-        if (!request[0].equals(main.getKey())) {
-            channel.close();
-            return;
-        }
-
-        requests.put(channel.getRemoteAddress(), request[1].split(","));
+        requests.put(channel.getRemoteAddress(), new Integer[] {chunkX, chunkZ});
 
         channel.register(selector, SelectionKey.OP_WRITE);
     }
@@ -96,90 +96,63 @@ public class ChannelManager implements Runnable {
     private void write(SelectionKey key) throws IOException {
         SocketChannel channel = (SocketChannel) key.channel();
 
-        String[] request = requests.get(channel.getRemoteAddress());
+        Integer[] request = requests.get(channel.getRemoteAddress());
+        int chunkX = request[0];
+        int chunkZ = request[1];
 
         channel.register(selector, SelectionKey.OP_CONNECT);
 
-        if (request[0].equalsIgnoreCase("c")) {
-            Chunk chunk = loadChunks(Integer.parseInt(request[1]), Integer.parseInt(request[2]));
+        Chunk chunk = loadChunks(chunkX, chunkZ);
 
-            Bukkit.getScheduler().runTaskAsynchronously(this.main, () -> {
-                StringBuilder output = new StringBuilder();
+        Bukkit.getScheduler().runTaskAsynchronously(this.main, () -> {
+            // Waiting till the chunk is loaded
+            while (!chunk.isLoaded()) {}
+            ChunkSnapshot snapshot = chunk.getChunkSnapshot();
 
-                while (!chunk.isLoaded()) {}
+            try {
+                // Creating output streams for easier manipulation
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-                for (int x = 0; x < 16; x++) {
-                    for (int y = 0; y < 256; y++) {
-                        for (int z = 0; z < 16; z++) {
-                            output.append(x).append(";").append(y).append(";").append(z).append(";").append(chunk.getBlock(x, y, z).getType().getKey().getKey()).append(";");
-                        }
-                    }
+                // Writing chunk sections bitmask
+                BitSet chunkSections = new BitSet(16);
+                for (int section = 0; section < 16; section++)
+                    chunkSections.set(section, !snapshot.isSectionEmpty(section));
+                outputStream.write(chunkSections.toByteArray());
+
+                // Writing chunk section data
+                for (int section = 0; section < 16; section++) {
+                    if (!snapshot.isSectionEmpty(section)) continue;
+
+                    //
                 }
 
-                output.deleteCharAt(output.length() - 1);
+                // Compressing the data
+                byte[] rawData = byteArrayOutputStream.toByteArray();
+                byte[] rawDataCompressed = Zstd.compress(rawData);
 
-                output.append("!");
-
-                byte[] bytes = output.toString().getBytes(StandardCharsets.UTF_8);
-                ByteBuffer buffer = ByteBuffer.allocate(bytes.length);
-                buffer.put(bytes);
+                // Putting everything into the buffer
+                ByteBuffer buffer = ByteBuffer.allocate(rawDataCompressed.length + 9);
+                buffer.put((byte) 0x02); // Packet ID
+                buffer.putInt(rawDataCompressed.length);
+                buffer.putInt(rawData.length);
+                buffer.put(rawDataCompressed);
                 buffer.flip();
-                try {
-                    while (buffer.hasRemaining()) {
-                        channel.write(buffer);
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
 
-                try {
-                    channel.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        } else if (request[0].equalsIgnoreCase("b")) {
-            Chunk chunk = loadChunks(Integer.parseInt(request[1]), Integer.parseInt(request[2]));
-
-            Bukkit.getScheduler().runTaskAsynchronously(this.main, () -> {
-                StringBuilder output = new StringBuilder();
-
-                for (int x = 0; x < 16; x++) {
-                    for (int z = 0; z < 16; z++) {
-                        output.append(chunk.getWorld().getBiome(x, 65, z).ordinal());
-                    }
-                }
-
-                ByteBuffer buffer = ByteBuffer.allocate(2048);
-                byte[] bytes = output.toString().getBytes(StandardCharsets.UTF_8);
-                for (int i = 0; i < bytes.length; i += 2048) {
-                    buffer.put(buffer);
-                    buffer.flip();
-                    try {
-                        channel.write(buffer);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-
-                try {
-                    channel.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        }
+                // Dumping the buffer into the socket channel
+                while (buffer.hasRemaining())
+                    channel.write(buffer);
+                channel.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     private Chunk loadChunks(int x, int z) {
-        Chunk chunk;
-        for (int offX = -1; offX <= 1; offX++) {
-            for (int offZ = -1; offZ <= 1; offZ++) {
-                chunk = Bukkit.getWorld("world").getChunkAt(x - offX, z - offZ);
-                chunk.load();
-                Bukkit.getScheduler().runTaskLater(this.main, (Runnable) chunk::unload, 1000);
-            }
-        }
-        return Bukkit.getWorld("world").getChunkAt(x, z);
+        Chunk chunk = Bukkit.getWorld("world").getChunkAt(x, z);
+        chunk.load();
+        Bukkit.getScheduler().runTaskLater(this.main, (Runnable) chunk::unload, 1000);
+        return chunk;
     }
 }
