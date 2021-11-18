@@ -1,20 +1,23 @@
 package com.github.mrgeotech;
 
+import com.github.luben.zstd.Zstd;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.instance.ChunkGenerator;
 import net.minestom.server.instance.ChunkPopulator;
 import net.minestom.server.instance.batch.ChunkBatch;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.world.biomes.Biome;
+import org.jglrxavpok.hephaistos.mca.LongCompactorKt;
+import org.jglrxavpok.hephaistos.nbt.NBTCompound;
+import org.jglrxavpok.hephaistos.nbt.NBTException;
+import org.jglrxavpok.hephaistos.nbt.NBTReader;
+import org.jglrxavpok.hephaistos.nbt.NBTString;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class ConnectedChunkLoader implements ChunkGenerator {
 
@@ -22,102 +25,115 @@ public class ConnectedChunkLoader implements ChunkGenerator {
     public void generateChunkData(ChunkBatch batch, int chunkX, int chunkZ) {
         InetSocketAddress address = ConfigHandler.getIP();
         System.out.println("Connecting to server " + address.getHostName() + ":" + address.getPort() + "...");
+
         try {
             SocketChannel channel = SocketChannel.open(address);
             channel.configureBlocking(true);
 
-            ByteBuffer buffer = ByteBuffer.allocate(2048);
-            buffer.put((ConfigHandler.getKey() + ";c," + chunkX + "," + chunkZ).getBytes(StandardCharsets.UTF_8));
+            // Building the chunk request packet and sending it
+            ByteBuffer buffer = ByteBuffer.allocate(9);
+            buffer.put((byte) 0x01); // 1 byte
+            buffer.putInt(chunkX); // 4 bytes
+            buffer.putInt(chunkZ); // 4 bytes
             buffer.flip();
             channel.write(buffer);
 
-            String output = "";
+            // TODO: Clean up all this code
 
-            buffer = ByteBuffer.allocate(1000000);
-            while (channel.read(buffer) > 0) {
-                output += new String(buffer.array()).trim();
-            }
+            // Reading the chunk data
+            buffer = ByteBuffer.allocate(9);
+            channel.read(buffer);
 
+            byte packetId = buffer.get();
+            if (packetId != (byte) 0x02) return;
+
+            int compressedPayloadLength = buffer.getInt();
+            int uncompressedPayloadLength = buffer.getInt();
+
+            // Filling the buffer with all the packet's contents
+            buffer = ByteBuffer.allocate(compressedPayloadLength);
+            channel.read(buffer);
+
+            byte[] compressedOutput = buffer.array();
+            byte[] output = new byte[uncompressedPayloadLength];
+
+            Zstd.decompress(output, compressedOutput);
+
+            // Getting data streams for easier use of the data
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(output);
+            DataInputStream inputStream = new DataInputStream(byteArrayInputStream);
+
+            // Closing the socket and clearing the buffer
             channel.close();
             buffer.clear();
 
-            output = output.replace("!", "");
+            // Getting the chunk sections
+            BitSet chunkSections = BitSet.valueOf(inputStream.readNBytes(2));
 
-            String[] blocksAsStrings = output.split(";");
+            for (int i = 0; i < 16; i++) {
+                if (!chunkSections.get(i)) {
+                    // Continue if there is no chunk section at i
+                    continue;
+                }
 
-            for (int i = 0; i < blocksAsStrings.length - 1; i += 4) {
-                try {
-                    batch.setBlock(Integer.parseInt(blocksAsStrings[i]),
-                            Integer.parseInt(blocksAsStrings[i + 1]),
-                            Integer.parseInt(blocksAsStrings[i + 2]),
-                            Objects.requireNonNull(Block.fromNamespaceId(blocksAsStrings[i + 3])));
-                } catch (NullPointerException e) {
-                    batch.setBlock(Integer.parseInt(blocksAsStrings[i]),
-                            Integer.parseInt(blocksAsStrings[i + 1]),
-                            Integer.parseInt(blocksAsStrings[i + 2]),
-                            Objects.requireNonNull(Block.AIR));
-                    blocksAsStrings[i + 3] = blocksAsStrings[i + 3].replaceAll("[^\\d.]", "");
-                    i--;
-                } catch (NumberFormatException e) {
-                    i -= 5;
-                } catch (Exception e) {
-                    e.printStackTrace();
+                int yOffset = i * 16;
+
+                // Reading the palette data
+                int paletteLength = inputStream.readInt();
+                List<NBTCompound> palette = new ArrayList<>();
+                for (int j = 0; j < paletteLength; j++) {
+                    int nbtLength = inputStream.readInt();
+                    byte[] nbtRaw = inputStream.readNBytes(nbtLength);
+                    NBTCompound nbt = (NBTCompound) new NBTReader(new ByteArrayInputStream(nbtRaw), false).read();
+                    palette.add(nbt);
+                }
+
+                // Reading the block state data
+                int blockStatesLength = inputStream.readInt();
+                long[] compactedBlockStates = new long[blockStatesLength];
+                for (int j = 0; j < blockStatesLength; j++) {
+                    compactedBlockStates[j] = inputStream.readLong();
+                }
+
+                int sizeInBits = compactedBlockStates.length * 64 / 4096;
+                int[] blockStates = LongCompactorKt.unpack(compactedBlockStates, sizeInBits);
+
+                for (int y = 0; y < 16; y++) {
+                    for (int z = 0; z < 16; z++) {
+                        for (int x = 0; x < 16; x++) {
+                            int pos = y * 16 * 16 + z * 16 + x;
+                            NBTCompound compound = palette.get(blockStates[pos]);
+                            Block block = getBlockFromCompound(compound);
+                            batch.setBlock(x, y + yOffset, z, block);
+                        }
+                    }
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | NBTException e) {
             e.printStackTrace();
         }
         System.out.println("Chunk loaded!");
         ConfigHandler.removeTask(address);
     }
 
+    private Block getBlockFromCompound(NBTCompound compound) {
+        String name = compound.getString("Name");
+        if (name == null) return null;
+        if (name == "minecraft:air") return null;
+
+        NBTCompound properties = compound.getCompound("Properties");
+        if (properties == null) properties = new NBTCompound();
+
+        HashMap<String, String> propertiesMap = new HashMap<>();
+        properties.iterator().forEachRemaining(pair -> {
+            propertiesMap.put(pair.component1(), ((NBTString) pair.component2()).getValue());
+        });
+
+        return Block.fromNamespaceId(name).withProperties(propertiesMap);
+    }
+
     @Override
     public void fillBiomes(Biome[] biomes, int chunkX, int chunkZ) {
-        /*
-        try {
-            System.out.println("Connecting to server...");
-            SocketChannel channel = SocketChannel.open(address);
-            Biome[] biomeList = new Biome[biomes.length];
-            Arrays.fill(biomeList, MinecraftServer.getBiomeManager().getById(0));
-            channel.configureBlocking(true);
-            System.out.println("Connected to server!");
-
-            ByteBuffer buffer = ByteBuffer.allocate(2048);
-            buffer.put(("b," + chunkX + "," + chunkZ).getBytes());
-            buffer.flip();
-            channel.write(buffer);
-
-            String output = "";
-
-            System.out.println("Getting biome data!");
-
-            buffer.clear();
-            while (channel.read(buffer) > 0) {
-                output += new String(buffer.array()).trim();
-            }
-
-            System.out.println("Closing channel!");
-
-            channel.close();
-            buffer.clear();
-
-            String[] biomesAsStrings = output.split(",");
-
-            for (int i = 0; i < biomesAsStrings.length; i++) {
-                try {
-                    biomeList[i] = MinecraftServer.getBiomeManager().getById(Integer.parseInt(biomesAsStrings[i]));
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-
-            biomes = biomeList;
-
-            System.out.println("Biomes received!");
-        } catch (IOException e) {
-            e.printStackTrace();
-            Arrays.fill(biomes, MinecraftServer.getBiomeManager().getById(0));
-        }*/
         Arrays.fill(biomes, MinecraftServer.getBiomeManager().getById(0));
     }
 
