@@ -1,9 +1,9 @@
 # Vanilink
 Link your Minestom and Vanilla server to get accurate terrain.
 # How to use
-### How to install
+## How to install
 To start using this program, simply download the extension and plugin jars from <a href="https://github.com/MrGeoTech/Vanilink/releases/tag/1.0.0">here</a>. Then, once you have done that, you can add the jars to your respective server folders.
-### How to configure
+## How to configure
 After you start your servers, there are a few things that you have to configure before your servers will become connected.
 
 To configure your servers, start by going into the spiogt plugin folder(`plugins/Vanilink/`) and open up the `config.yml` file. Open up this file and edit the `key` and `port` valuse.
@@ -29,7 +29,7 @@ change_this
 localhost:20000
 localhost:20001
 ```
-### How to contribute
+## How to contribute
 Feel free to create a pull request to add your own input to the project. Any and all help is wanted and appreciated. If you have any questions, let me know on discord at MrGeoTech#9470.
-### Bug Reports
+## Bug Reports
 If you found a bug, please create an issue in github and make sure to provide details on what you did and the errors you got. Make sure to be very clear or we won't be able to help you. If you have any other issues, you can alway contact me on discord at MrGeoTech#9470.
