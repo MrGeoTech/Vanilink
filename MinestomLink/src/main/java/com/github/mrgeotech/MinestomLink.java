@@ -7,6 +7,7 @@ import net.minestom.server.event.player.PlayerLoginEvent;
 import net.minestom.server.extensions.Extension;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.block.BlockGetter;
+import net.minestom.server.utils.NamespaceID;
 import net.minestom.server.world.DimensionType;
 
 import java.io.IOException;
@@ -24,7 +25,24 @@ public class MinestomLink extends Extension {
             e.printStackTrace();
             MinecraftServer.stopCleanly();
         }
-        container = MinecraftServer.getInstanceManager().createInstanceContainer(DimensionType.OVERWORLD);
+        DimensionType dimension = DimensionType.builder(NamespaceID.from("minecraft:overworld"))
+                .ultrawarm(false)
+                .natural(true)
+                .piglinSafe(false)
+                .respawnAnchorSafe(false)
+                .bedSafe(true)
+                .raidCapable(true)
+                .skylightEnabled(true)
+                .ceilingEnabled(false)
+                .fixedTime(null)
+                .ambientLight(0.0f)
+                .height(320)
+                .minY(-64)
+                .logicalHeight(320)
+                .infiniburn(NamespaceID.from("minecraft:infiniburn_overworld"))
+                .build();
+        MinecraftServer.getDimensionTypeManager().addDimension(dimension);
+        container = MinecraftServer.getInstanceManager().createInstanceContainer(dimension);
         container.setChunkGenerator(new ConnectedChunkLoader());
         MinecraftServer.getInstanceManager().registerInstance(container);
         container.loadChunk(0, 0);

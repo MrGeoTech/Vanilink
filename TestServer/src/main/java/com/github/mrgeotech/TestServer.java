@@ -8,6 +8,8 @@ public class TestServer {
         // Initialize the server
         MinecraftServer minecraftServer = MinecraftServer.init();
 
+        MinecraftServer.getCommandManager().register(new StopCommand());
+
         // Start the server
         minecraftServer.start("0.0.0.0", 25565);
     }

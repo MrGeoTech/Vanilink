@@ -13,11 +13,15 @@ Chunk Response:
 
 ---------------
 
-Chunk Format:  (Influenced by slime world chunk format & vanilla anvil format)
-  - 16 bit chunk section bitmask
-  - For each section:
-    - Int (4 bytes) Palette length
-    - NBT Array (varied, determined by previous int) Palette data
-    - Int (4 bytes) Block states length
-    - LongArray (varied, determined by previous int) Block states
-  TODO: Biomes
+Chunk Format:
+  - For each column:
+    - Int (4 bytes) Column height
+    - String Array (varied, determined by previous int) Column data
+      - Integer: Name length (if it is 0, it means the current block is the same as the previous and '*' will be added to signify that)
+      - NBTString: Name
+    
+NBT Format:
+  - "amount" - Short: Amount of the same block in a row
+  - "name" - String: NamespaceID of the blocks
+
+TODO: Biomes

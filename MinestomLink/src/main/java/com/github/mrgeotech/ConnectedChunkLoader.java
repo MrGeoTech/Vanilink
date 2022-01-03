@@ -7,22 +7,22 @@ import net.minestom.server.instance.ChunkPopulator;
 import net.minestom.server.instance.batch.ChunkBatch;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.world.biomes.Biome;
+import org.jetbrains.annotations.NotNull;
 import org.jglrxavpok.hephaistos.mca.LongCompactorKt;
-import org.jglrxavpok.hephaistos.nbt.NBTCompound;
-import org.jglrxavpok.hephaistos.nbt.NBTException;
-import org.jglrxavpok.hephaistos.nbt.NBTReader;
-import org.jglrxavpok.hephaistos.nbt.NBTString;
+import org.jglrxavpok.hephaistos.nbt.*;
 
+import javax.annotation.Nonnull;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class ConnectedChunkLoader implements ChunkGenerator {
 
     @Override
-    public void generateChunkData(ChunkBatch batch, int chunkX, int chunkZ) {
+    public void generateChunkData(@NotNull ChunkBatch batch, int chunkX, int chunkZ) {
         InetSocketAddress address = ConfigHandler.getIP();
         System.out.println("Connecting to server " + address.getHostName() + ":" + address.getPort() + "...");
 
@@ -38,11 +38,13 @@ public class ConnectedChunkLoader implements ChunkGenerator {
             buffer.flip();
             channel.write(buffer);
 
-            // TODO: Clean up all this code
+            System.out.println("Chunk (" + chunkX + ", " + chunkZ + ") sent!");
 
             // Reading the chunk data
             buffer = ByteBuffer.allocate(9);
             channel.read(buffer);
+
+            buffer.position(0);
 
             byte packetId = buffer.get();
             if (packetId != (byte) 0x02) return;
@@ -67,69 +69,47 @@ public class ConnectedChunkLoader implements ChunkGenerator {
             channel.close();
             buffer.clear();
 
-            // Getting the chunk sections
-            BitSet chunkSections = BitSet.valueOf(inputStream.readNBytes(2));
+            // Reading the block data
+            int paletteLength = inputStream.readInt();
+            List<String> chunkBlockData = new ArrayList<>();
+            for (int j = 0; j < paletteLength; j++) {
+            }
 
-            for (int i = 0; i < 16; i++) {
-                if (!chunkSections.get(i)) {
-                    // Continue if there is no chunk section at i
-                    continue;
-                }
+            // Iterator makes getting the items from list easier
+            ListIterator<String> chunkDataIterator = chunkBlockData.listIterator();
+            Block prevBlock = Block.AIR;
 
-                int yOffset = i * 16;
-
-                // Reading the palette data
-                int paletteLength = inputStream.readInt();
-                List<NBTCompound> palette = new ArrayList<>();
-                for (int j = 0; j < paletteLength; j++) {
-                    int nbtLength = inputStream.readInt();
-                    byte[] nbtRaw = inputStream.readNBytes(nbtLength);
-                    NBTCompound nbt = (NBTCompound) new NBTReader(new ByteArrayInputStream(nbtRaw), false).read();
-                    palette.add(nbt);
-                }
-
-                // Reading the block state data
-                int blockStatesLength = inputStream.readInt();
-                long[] compactedBlockStates = new long[blockStatesLength];
-                for (int j = 0; j < blockStatesLength; j++) {
-                    compactedBlockStates[j] = inputStream.readLong();
-                }
-
-                int sizeInBits = compactedBlockStates.length * 64 / 4096;
-                int[] blockStates = LongCompactorKt.unpack(compactedBlockStates, sizeInBits);
-
-                for (int y = 0; y < 16; y++) {
-                    for (int z = 0; z < 16; z++) {
-                        for (int x = 0; x < 16; x++) {
-                            int pos = y * 16 * 16 + z * 16 + x;
-                            NBTCompound compound = palette.get(blockStates[pos]);
-                            Block block = getBlockFromCompound(compound);
-                            batch.setBlock(x, y + yOffset, z, block);
+            // Going through batch and setting blocks to their type
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    for (int y = -64; y < 320; y++) {
+                        int sLength = inputStream.readInt();
+                        if (sLength == 0) {
+                            batch.setBlock(x, y, z, prevBlock);
+                        } else {
+                            byte[] sRaw = inputStream.readNBytes(sLength);
+                            batch.setBlock(x, y, z, prevBlock = Objects.requireNonNull(
+                                    Block.fromNamespaceId("minecraft:" + (new String(sRaw, StandardCharsets.UTF_8)))));
                         }
+                        /* h
+                        String blockType = chunkDataIterator.next();
+                        try {
+                            if (blockType.equals("*"))
+                                batch.setBlock(x, y, z, prevBlock);
+                            else
+                                batch.setBlock(x, y, z, prevBlock = Objects.requireNonNull(Block.fromNamespaceId(blockType)));
+                        } catch (NullPointerException e) {
+                            e.printStackTrace(System.err);
+                            System.err.println(blockType);
+                        }*/
                     }
                 }
             }
-        } catch (IOException | NBTException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         System.out.println("Chunk loaded!");
         ConfigHandler.removeTask(address);
-    }
-
-    private Block getBlockFromCompound(NBTCompound compound) {
-        String name = compound.getString("Name");
-        if (name == null) return null;
-        if (name == "minecraft:air") return null;
-
-        NBTCompound properties = compound.getCompound("Properties");
-        if (properties == null) properties = new NBTCompound();
-
-        HashMap<String, String> propertiesMap = new HashMap<>();
-        properties.iterator().forEachRemaining(pair -> {
-            propertiesMap.put(pair.component1(), ((NBTString) pair.component2()).getValue());
-        });
-
-        return Block.fromNamespaceId(name).withProperties(propertiesMap);
     }
 
     @Override

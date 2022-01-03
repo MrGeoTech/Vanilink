@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id "com.github.johnrengelman.shadow" version "7.1.0"
 }
 
 group 'org.example'
@@ -21,7 +22,8 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'org.spigotmc:spigot-api:1.17-R0.1-SNAPSHOT'
-    implementation 'io.github.jglrxavpok.hephaistos:common:2.2.0'
-    implementation 'com.github.luben:zstd-jni:1.2.0-2'
+    compileOnly 'org.spigotmc:spigot-api:1.18.1-R0.1-SNAPSHOT'
+    implementation 'io.github.jglrxavpok.hephaistos:common:2.3.2'
+    implementation 'com.github.luben:zstd-jni:1.5.1-1'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.6.0'
 }
