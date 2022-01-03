@@ -24,7 +24,9 @@ public class ConnectedChunkLoader implements ChunkGenerator {
     @Override
     public void generateChunkData(@NotNull ChunkBatch batch, int chunkX, int chunkZ) {
         InetSocketAddress address = ConfigHandler.getIP();
-        System.out.println("Connecting to server " + address.getHostName() + ":" + address.getPort() + "...");
+
+        long startTime, sendTime = 0, startReceiveTime = 0, endReceiveTime = 0, preProcessTime = 0;
+        startTime = System.currentTimeMillis();
 
         try {
             SocketChannel channel = SocketChannel.open(address);
@@ -38,11 +40,14 @@ public class ConnectedChunkLoader implements ChunkGenerator {
             buffer.flip();
             channel.write(buffer);
 
-            System.out.println("Chunk (" + chunkX + ", " + chunkZ + ") sent!");
+            // TODO: Remove profiling
+            sendTime = System.currentTimeMillis();
 
             // Reading the chunk data
             buffer = ByteBuffer.allocate(9);
             channel.read(buffer);
+
+            startReceiveTime = System.currentTimeMillis();
 
             buffer.position(0);
 
@@ -55,6 +60,8 @@ public class ConnectedChunkLoader implements ChunkGenerator {
             // Filling the buffer with all the packet's contents
             buffer = ByteBuffer.allocate(compressedPayloadLength);
             channel.read(buffer);
+
+            endReceiveTime = System.currentTimeMillis();
 
             byte[] compressedOutput = buffer.array();
             byte[] output = new byte[uncompressedPayloadLength];
@@ -69,15 +76,9 @@ public class ConnectedChunkLoader implements ChunkGenerator {
             channel.close();
             buffer.clear();
 
-            // Reading the block data
-            int paletteLength = inputStream.readInt();
-            List<String> chunkBlockData = new ArrayList<>();
-            for (int j = 0; j < paletteLength; j++) {
-            }
-
-            // Iterator makes getting the items from list easier
-            ListIterator<String> chunkDataIterator = chunkBlockData.listIterator();
             Block prevBlock = Block.AIR;
+
+            preProcessTime = System.currentTimeMillis();
 
             // Going through batch and setting blocks to their type
             for (int x = 0; x < 16; x++) {
@@ -91,25 +92,17 @@ public class ConnectedChunkLoader implements ChunkGenerator {
                             batch.setBlock(x, y, z, prevBlock = Objects.requireNonNull(
                                     Block.fromNamespaceId("minecraft:" + (new String(sRaw, StandardCharsets.UTF_8)))));
                         }
-                        /* h
-                        String blockType = chunkDataIterator.next();
-                        try {
-                            if (blockType.equals("*"))
-                                batch.setBlock(x, y, z, prevBlock);
-                            else
-                                batch.setBlock(x, y, z, prevBlock = Objects.requireNonNull(Block.fromNamespaceId(blockType)));
-                        } catch (NullPointerException e) {
-                            e.printStackTrace(System.err);
-                            System.err.println(blockType);
-                        }*/
                     }
                 }
             }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
-        System.out.println("Chunk loaded!");
         ConfigHandler.removeTask(address);
+
+        System.out.println("Timings:" + (System.currentTimeMillis() - startTime) + " " + (sendTime - startTime) + " " +
+                (sendTime - startReceiveTime) + " " + (endReceiveTime - startReceiveTime));
     }
 
     @Override

@@ -138,7 +138,6 @@ public class ChannelManager implements Runnable {
                 }
 
                 // Adding data to be sent to stream
-                outputStream.writeInt(chunkBlockData.size());
                 for (String name : chunkBlockData) {
                     if (name.equals("*"))
                         outputStream.writeInt(0);

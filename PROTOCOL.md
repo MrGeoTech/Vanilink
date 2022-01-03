@@ -15,8 +15,7 @@ Chunk Response:
 
 Chunk Format:
   - For each column:
-    - Int (4 bytes) Column height
-    - String Array (varied, determined by previous int) Column data
+    - String Array (varied) Column data
       - Integer: Name length (if it is 0, it means the current block is the same as the previous and '*' will be added to signify that)
       - NBTString: Name
     
