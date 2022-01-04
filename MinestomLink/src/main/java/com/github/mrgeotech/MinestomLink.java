@@ -36,9 +36,9 @@ public class MinestomLink extends Extension {
                 .ceilingEnabled(false)
                 .fixedTime(null)
                 .ambientLight(0.0f)
-                .height(320)
+                .height(384)
                 .minY(-64)
-                .logicalHeight(320)
+                .logicalHeight(384)
                 .infiniburn(NamespaceID.from("minecraft:infiniburn_overworld"))
                 .build();
         MinecraftServer.getDimensionTypeManager().addDimension(dimension);
@@ -66,6 +66,7 @@ public class MinestomLink extends Extension {
     @Override
     public void terminate() {
         container.saveChunksToStorage();
+        container.saveInstance();
     }
 
 }
