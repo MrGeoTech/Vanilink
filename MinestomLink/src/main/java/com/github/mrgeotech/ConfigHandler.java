@@ -4,6 +4,9 @@ import net.minestom.server.MinecraftServer;
 
 import java.io.*;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,6 +37,11 @@ public class ConfigHandler {
             System.err.println("An error occurred reading your vanilla ips! Please check that there is at least one ip and that they follow the format of '<address>:<port>'!");
             MinecraftServer.stopCleanly();
         }
+        for (Map.Entry<InetSocketAddress, Integer> entry : ips.entrySet()) {
+            if (!testIP(entry.getKey())) {
+                System.err.println("IP " + entry.getKey().toString() + " either is unable to be connected to or your key is configured incorrectly!");
+            }
+        }
     }
 
     public static InetSocketAddress getIP() {
@@ -50,8 +58,28 @@ public class ConfigHandler {
         ips.put(address, ips.get(address) - 1);
     }
 
-    public static String getKey() {
-        return key;
+    public static boolean testIP(InetSocketAddress address) {
+        try {
+            SocketChannel channel = SocketChannel.open(address);
+
+            byte[] bytes = key.getBytes(StandardCharsets.UTF_8);
+            ByteBuffer buffer = ByteBuffer.allocate(bytes.length + 5);
+            buffer.put((byte) 0x03); // 1 byte
+            buffer.putInt(bytes.length); // 4 bytes
+            buffer.put(bytes); // bytes.length bytes
+            buffer.flip();
+            channel.write(buffer);
+
+            buffer.clear();
+
+            buffer = ByteBuffer.allocate(1);
+
+            channel.read(buffer);
+
+            return buffer.get() == (byte) 0x04;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
 }
