@@ -1,11 +1,13 @@
 package com.github.mrgeotech;
 
+import com.github.mrgeotech.lighting.LightEngine;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.event.player.PlayerLoginEvent;
 import net.minestom.server.extensions.Extension;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.timer.TaskSchedule;
 import net.minestom.server.world.DimensionType;
 
 import java.io.IOException;
@@ -40,6 +42,8 @@ public class MinestomLink extends Extension {
             event.setSpawningInstance(container);
             event.getPlayer().setRespawnPoint(spawn);
         });
+        MinecraftServer.getSchedulerManager().scheduleTask(
+                () -> LightEngine.recalculateInstance(container), TaskSchedule.tick(1), TaskSchedule.tick(1));
         System.out.println("Extension loaded!");
     }
 
