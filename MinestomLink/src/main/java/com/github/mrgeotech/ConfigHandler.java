@@ -73,8 +73,8 @@ public class ConfigHandler {
             buffer.clear();
 
             buffer = ByteBuffer.allocate(1);
-
             channel.read(buffer);
+            buffer.position(0);
 
             return buffer.get() == (byte) 0x04;
         } catch (Exception e) {

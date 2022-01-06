@@ -1,32 +1,26 @@
 package com.github.mrgeotech;
 
 import com.github.luben.zstd.Zstd;
-import net.minestom.server.MinecraftServer;
 import net.minestom.server.instance.ChunkGenerator;
 import net.minestom.server.instance.ChunkPopulator;
 import net.minestom.server.instance.batch.ChunkBatch;
 import net.minestom.server.instance.block.Block;
-import net.minestom.server.world.biomes.Biome;
 import org.jetbrains.annotations.NotNull;
-import org.jglrxavpok.hephaistos.mca.LongCompactorKt;
-import org.jglrxavpok.hephaistos.nbt.*;
 
-import javax.annotation.Nonnull;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.List;
+import java.util.Objects;
 
 public class ConnectedChunkLoader implements ChunkGenerator {
 
     @Override
     public void generateChunkData(@NotNull ChunkBatch batch, int chunkX, int chunkZ) {
         InetSocketAddress address = ConfigHandler.getIP();
-
-        long startTime, sendTime = 0, startReceiveTime = 0, endReceiveTime = 0, preProcessTime = 0;
-        startTime = System.currentTimeMillis();
 
         try {
             SocketChannel channel = SocketChannel.open(address);
@@ -40,14 +34,9 @@ public class ConnectedChunkLoader implements ChunkGenerator {
             buffer.flip();
             channel.write(buffer);
 
-            // TODO: Remove profiling
-            sendTime = System.currentTimeMillis();
-
             // Reading the chunk data
             buffer = ByteBuffer.allocate(9);
             channel.read(buffer);
-
-            startReceiveTime = System.currentTimeMillis();
 
             buffer.position(0);
 
@@ -60,8 +49,6 @@ public class ConnectedChunkLoader implements ChunkGenerator {
             // Filling the buffer with all the packet's contents
             buffer = ByteBuffer.allocate(compressedPayloadLength);
             channel.read(buffer);
-
-            endReceiveTime = System.currentTimeMillis();
 
             byte[] compressedOutput = buffer.array();
             byte[] output = new byte[uncompressedPayloadLength];
@@ -77,8 +64,6 @@ public class ConnectedChunkLoader implements ChunkGenerator {
             buffer.clear();
 
             Block prevBlock = Block.AIR;
-
-            preProcessTime = System.currentTimeMillis();
 
             // Going through batch and setting blocks to their type
             for (int x = 0; x < 16; x++) {
@@ -100,15 +85,12 @@ public class ConnectedChunkLoader implements ChunkGenerator {
             e.printStackTrace();
         }
         ConfigHandler.removeTask(address);
-
-        System.out.println("Timings:" + (System.currentTimeMillis() - startTime) + " " + (sendTime - startTime) + " " +
-                (sendTime - startReceiveTime) + " " + (endReceiveTime - startReceiveTime));
     }
 
-    @Override
+    /*Override
     public void fillBiomes(Biome[] biomes, int chunkX, int chunkZ) {
         Arrays.fill(biomes, MinecraftServer.getBiomeManager().getById(0));
-    }
+    }*/
 
     @Override
     public List<ChunkPopulator> getPopulators() {
