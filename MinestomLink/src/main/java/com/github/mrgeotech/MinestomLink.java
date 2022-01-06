@@ -29,8 +29,9 @@ public class MinestomLink extends Extension {
         container.setChunkGenerator(new ConnectedChunkLoader());
         MinecraftServer.getInstanceManager().registerInstance(container);
         container.loadChunk(0, 0);
-        for (int x = -8; x <= 8; x++) {
-            for (int y = -8; y <= 8; y++) {
+        int viewDistance = Integer.getInteger("minestom.chunk-view-distance", 8);
+        for (int x = -viewDistance; x <= viewDistance; x++) {
+            for (int y = -viewDistance; y <= viewDistance; y++) {
                 container.loadChunk(x, y);
             }
         }

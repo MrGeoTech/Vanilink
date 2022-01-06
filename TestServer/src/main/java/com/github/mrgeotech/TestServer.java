@@ -3,19 +3,15 @@ package com.github.mrgeotech;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.PlayerSkin;
-import net.minestom.server.event.player.PlayerRespawnEvent;
 import net.minestom.server.event.player.PlayerSkinInitEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.extras.MojangAuth;
 import net.minestom.server.extras.optifine.OptifineSupport;
-import net.minestom.server.timer.ExecutionType;
-import net.minestom.server.timer.TaskSchedule;
-
-import java.util.concurrent.TimeUnit;
 
 public class TestServer {
 
     public static void main(String[] args) {
+        System.setProperty("minestom.chunk-view-distance", String.valueOf(32));
         // Initialize the server
         MinecraftServer minecraftServer = MinecraftServer.init();
 
