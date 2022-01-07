@@ -8,9 +8,7 @@ public class StopCommand extends Command {
     public StopCommand() {
         super("stop");
 
-        setDefaultExecutor((sender, context) -> {
-            MinecraftServer.stopCleanly();
-        });
+        setDefaultExecutor((sender, context) -> MinecraftServer.stopCleanly());
     }
 
 }

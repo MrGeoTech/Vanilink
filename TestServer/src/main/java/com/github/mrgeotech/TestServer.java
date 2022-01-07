@@ -17,9 +17,9 @@ public class TestServer {
 
         MinecraftServer.getCommandManager().register(new StopCommand());
 
-        MinecraftServer.getGlobalEventHandler().addListener(PlayerSkinInitEvent.class, event -> {
-            event.setSkin(PlayerSkin.fromUsername(event.getPlayer().getUsername()));
-        }).addListener(PlayerSpawnEvent.class, event -> event.getPlayer().setGameMode(GameMode.CREATIVE));
+        MinecraftServer.getGlobalEventHandler().addListener(PlayerSkinInitEvent.class,
+                event -> event.setSkin(PlayerSkin.fromUsername(event.getPlayer().getUsername())))
+                .addListener(PlayerSpawnEvent.class, event -> event.getPlayer().setGameMode(GameMode.CREATIVE));
 
         OptifineSupport.enable();
 
