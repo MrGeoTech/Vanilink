@@ -230,7 +230,7 @@ public class ChannelManager implements Runnable {
     private Chunk loadChunks(int x, int z) {
         Chunk chunk = Objects.requireNonNull(Bukkit.getWorld("world")).getChunkAt(x, z);
         chunk.load();
-        Bukkit.getScheduler().runTaskLater(this.main, (Runnable) chunk::unload, 1000);
+        Bukkit.getScheduler().runTaskLater(this.main, (Runnable) chunk::unload, 100);
         return chunk;
     }
 }

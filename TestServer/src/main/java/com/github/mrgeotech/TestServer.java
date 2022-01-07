@@ -11,7 +11,7 @@ import net.minestom.server.extras.optifine.OptifineSupport;
 public class TestServer {
 
     public static void main(String[] args) {
-        System.setProperty("minestom.chunk-view-distance", String.valueOf(32));
+        System.setProperty("minestom.chunk-view-distance", String.valueOf(16));
         // Initialize the server
         MinecraftServer minecraftServer = MinecraftServer.init();
 
