@@ -5,6 +5,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.ChunkSnapshot;
 import org.bukkit.Material;
+import org.bukkit.block.Biome;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -170,11 +171,13 @@ public class ChannelManager implements Runnable {
 
                     List<String> chunkBlockData = new ArrayList<>();
                     Material prevBlock = Material.AIR;
+                    Biome prevBiome = Biome.PLAINS;
 
                     for (int x = 0; x < 16; x++) {
                         for (int z = 0; z < 16; z++) {
                             for (int y = -64; y < 320; y++) {
                                 Material type = snapshot.getBlockType(x, y, z);
+                                Biome biome = snapshot.getBiome(x, y, z);
                                 if (type.equals(prevBlock))
                                     chunkBlockData.add("*");
                                 else
