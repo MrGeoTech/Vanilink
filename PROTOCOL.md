@@ -17,10 +17,7 @@ Chunk Format:
   - For each column:
     - String Array (varied) Column data
       - Integer: Name length (if it is 0, it means the current block is the same as the previous and '*' will be added to signify that)
-      - NBTString: Name
+      - String: Name
+      - String: Biome
     
-NBT Format:
-  - "amount" - Short: Amount of the same block in a row
-  - "name" - String: NamespaceID of the blocks
-
 TODO: Biomes
