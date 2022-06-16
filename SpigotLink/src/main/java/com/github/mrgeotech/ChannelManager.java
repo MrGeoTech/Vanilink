@@ -78,155 +78,161 @@ public class ChannelManager implements Runnable {
         }
     }
 
-    private void read(SelectionKey key) throws IOException {
-        SocketChannel channel = (SocketChannel) key.channel();
+    private void read(SelectionKey key) {
+        try (SocketChannel channel = (SocketChannel) key.channel()) {
 
-        ByteBuffer buffer = ByteBuffer.allocate(1);
-        channel.read(buffer);
-        buffer.position(0);
+            ByteBuffer buffer = ByteBuffer.allocate(1);
+            channel.read(buffer);
+            buffer.position(0);
 
-        byte packetId = buffer.get();
+            byte packetId = buffer.get();
 
-        if (packetId == 0x01) {
-            // Returns if they are not using a trusted connection
-            if (!trustedAddresses.contains(channel.getRemoteAddress().toString().split(":")[0])) {
-                requests.put(channel.getRemoteAddress(), new Integer[] {1, 0, 0x03});
+            if (packetId == 0x01) {
+                // Returns if they are not using a trusted connection
+                if (!trustedAddresses.contains(channel.getRemoteAddress().toString().split(":")[0])) {
+                    requests.put(channel.getRemoteAddress(), new Integer[]{1, 0, 0x03});
+
+                    channel.register(selector, SelectionKey.OP_WRITE);
+                    return;
+                }
+                buffer = ByteBuffer.allocate(8);
+                channel.read(buffer);
+                buffer.position(0);
+
+                int chunkX = buffer.getInt();
+                int chunkZ = buffer.getInt();
+
+                while (buffer.hasRemaining())
+                    buffer.get();
+
+                requests.put(channel.getRemoteAddress(), new Integer[]{chunkX, chunkZ, (int) packetId});
 
                 channel.register(selector, SelectionKey.OP_WRITE);
-                return;
+            } else if (packetId == 0x03) {
+                buffer.clear();
+                buffer = ByteBuffer.allocate(4);
+                channel.read(buffer);
+                buffer.position(0);
+
+                int size = buffer.getInt();
+                System.out.println(size);
+
+                buffer = ByteBuffer.allocate(size);
+                channel.read(buffer);
+                buffer.position(0);
+
+                String pass = new String(buffer.array(), StandardCharsets.UTF_8);
+
+                if (pass.equals(main.getKey())) {
+                    System.out.println("Connection " + channel.getRemoteAddress().toString() + " verified!");
+
+                    requests.put(channel.getRemoteAddress(), new Integer[]{0, 0, 0x03});
+                    trustedAddresses.add(channel.getRemoteAddress().toString().split(":")[0]);
+
+                    channel.register(selector, SelectionKey.OP_WRITE);
+                } else {
+                    System.out.println("Connection " + channel.getRemoteAddress().toString() + " attempted to be verified but did not have the proper credentials!");
+                    requests.put(channel.getRemoteAddress(), new Integer[]{1, 0, 0x03});
+
+                    channel.register(selector, SelectionKey.OP_WRITE);
+                }
             }
-            buffer = ByteBuffer.allocate(8);
-            channel.read(buffer);
-            buffer.position(0);
-
-            int chunkX = buffer.getInt();
-            int chunkZ = buffer.getInt();
-
-            while (buffer.hasRemaining())
-                buffer.get();
-
-            requests.put(channel.getRemoteAddress(), new Integer[] {chunkX, chunkZ, (int) packetId});
-
-            channel.register(selector, SelectionKey.OP_WRITE);
-        } else if (packetId == 0x03) {
-            buffer.clear();
-            buffer = ByteBuffer.allocate(4);
-            channel.read(buffer);
-            buffer.position(0);
-
-            int size = buffer.getInt();
-            System.out.println(size);
-
-            buffer = ByteBuffer.allocate(size);
-            channel.read(buffer);
-            buffer.position(0);
-
-            String pass = new String(buffer.array(), StandardCharsets.UTF_8);
-
-            if (pass.equals(main.getKey())) {
-                System.out.println("Connection " + channel.getRemoteAddress().toString() + " verified!");
-
-                requests.put(channel.getRemoteAddress(), new Integer[] {0, 0, 0x03});
-                trustedAddresses.add(channel.getRemoteAddress().toString().split(":")[0]);
-
-                channel.register(selector, SelectionKey.OP_WRITE);
-            } else {
-                System.out.println("Connection " + channel.getRemoteAddress().toString() + " attempted to be verified but did not have the proper credentials!");
-                requests.put(channel.getRemoteAddress(), new Integer[] {1, 0, 0x03});
-
-                channel.register(selector, SelectionKey.OP_WRITE);
-            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    private void write(SelectionKey key) throws IOException {
-        SocketChannel channel = (SocketChannel) key.channel();
+    private void write(SelectionKey key) {
+        try (SocketChannel channel = (SocketChannel) key.channel()) {
 
-        Integer[] request = requests.get(channel.getRemoteAddress());
-        int chunkX = request[0];
-        int chunkZ = request[1];
+            Integer[] request = requests.get(channel.getRemoteAddress());
+            int chunkX = request[0];
+            int chunkZ = request[1];
 
-        // If the chunk block data is requested
-        if (request[2] == 0x01) {
+            // If the chunk block data is requested
+            if (request[2] == 0x01) {
 
-            channel.register(selector, SelectionKey.OP_CONNECT);
+                channel.register(selector, SelectionKey.OP_CONNECT);
 
-            Chunk chunk = loadChunks(chunkX, chunkZ);
+                Chunk chunk = loadChunks(chunkX, chunkZ);
 
-            Bukkit.getScheduler().runTaskAsynchronously(this.main, () -> {
-                // Waiting till the chunk is loaded
-                while (!chunk.isLoaded()) {
-                    try {
-                        Thread.sleep(10);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+                Bukkit.getScheduler().runTaskAsynchronously(this.main, () -> {
+                    // Waiting till the chunk is loaded
+                    while (!chunk.isLoaded()) {
+                        try {
+                            Thread.sleep(10);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
                     }
-                }
-                ChunkSnapshot snapshot = chunk.getChunkSnapshot();
+                    ChunkSnapshot snapshot = chunk.getChunkSnapshot();
 
-                try {
-                    // Creating output streams for easier manipulation
-                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+                    try {
+                        // Creating output streams for easier manipulation
+                        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-                    List<String> chunkBlockData = new ArrayList<>();
-                    Material prevBlock = Material.AIR;
-                    Biome prevBiome = Biome.PLAINS;
+                        List<String> chunkBlockData = new ArrayList<>();
+                        Material prevBlock = Material.AIR;
+                        //Biome prevBiome = Biome.PLAINS;
 
-                    for (int x = 0; x < 16; x++) {
-                        for (int z = 0; z < 16; z++) {
-                            for (int y = -64; y < 320; y++) {
-                                Material type = snapshot.getBlockType(x, y, z);
-                                Biome biome = snapshot.getBiome(x, y, z);
-                                if (type.equals(prevBlock))
-                                    chunkBlockData.add("*");
-                                else
-                                    chunkBlockData.add((prevBlock = type).toString().toLowerCase());
+                        for (int x = 0; x < 16; x++) {
+                            for (int z = 0; z < 16; z++) {
+                                for (int y = -64; y < 320; y++) {
+                                    Material type = snapshot.getBlockType(x, y, z);
+                                    //Biome biome = snapshot.getBiome(x, y, z);
+                                    if (type.equals(prevBlock))
+                                        chunkBlockData.add("*");
+                                    else
+                                        chunkBlockData.add((prevBlock = type).toString().toLowerCase());
+                                }
                             }
                         }
-                    }
 
-                    // Adding data to be sent to stream
-                    for (String name : chunkBlockData) {
-                        if (name.equals("*"))
-                            outputStream.writeInt(0);
-                        else {
-                            byte[] bytes = name.getBytes(StandardCharsets.UTF_8);
-                            outputStream.writeInt(bytes.length);
-                            outputStream.write(bytes);
+                        // Adding data to be sent to stream
+                        for (String name : chunkBlockData) {
+                            if (name.equals("*"))
+                                outputStream.writeInt(0);
+                            else {
+                                byte[] bytes = name.getBytes(StandardCharsets.UTF_8);
+                                outputStream.writeInt(bytes.length);
+                                outputStream.write(bytes);
+                            }
                         }
+
+                        // Compressing the data
+                        byte[] rawData = byteArrayOutputStream.toByteArray();
+                        byte[] rawDataCompressed = Zstd.compress(rawData);
+
+                        // Putting everything into the buffer
+                        ByteBuffer buffer = ByteBuffer.allocate(rawDataCompressed.length + 9);
+                        buffer.put((byte) 0x02); // Packet ID
+                        buffer.putInt(rawDataCompressed.length);
+                        buffer.putInt(rawData.length);
+                        buffer.put(rawDataCompressed);
+                        buffer.flip();
+
+                        // Dumping the buffer into the socket channel
+                        while (buffer.hasRemaining())
+                            channel.write(buffer);
+                        channel.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
-
-                    // Compressing the data
-                    byte[] rawData = byteArrayOutputStream.toByteArray();
-                    byte[] rawDataCompressed = Zstd.compress(rawData);
-
-                    // Putting everything into the buffer
-                    ByteBuffer buffer = ByteBuffer.allocate(rawDataCompressed.length + 9);
-                    buffer.put((byte) 0x02); // Packet ID
-                    buffer.putInt(rawDataCompressed.length);
-                    buffer.putInt(rawData.length);
-                    buffer.put(rawDataCompressed);
-                    buffer.flip();
-
-                    // Dumping the buffer into the socket channel
-                    while (buffer.hasRemaining())
-                        channel.write(buffer);
-                    channel.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                });
+            } else if (request[2] == 0x03) {
+                ByteBuffer buffer = ByteBuffer.allocate(1);
+                if (request[0] == 0) {
+                    buffer.put((byte) 0x04);
+                } else {
+                    buffer.put((byte) 0x05);
                 }
-            });
-        } else if (request[2] == 0x03) {
-            ByteBuffer buffer = ByteBuffer.allocate(1);
-            if (request[0] == 0) {
-                buffer.put((byte) 0x04);
-            } else {
-                buffer.put((byte) 0x05);
+                buffer.flip();
+                channel.write(buffer);
+                channel.close();
             }
-            buffer.flip();
-            channel.write(buffer);
-            channel.close();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

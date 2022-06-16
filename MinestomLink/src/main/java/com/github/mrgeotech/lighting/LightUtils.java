@@ -11,7 +11,7 @@ import java.util.*;
  * Edits made by MrGeoTech
  */
 
-public class LightEngine {
+public class LightUtils {
 
     private static final SectionUtils utils = new SectionUtils();
 
@@ -51,14 +51,14 @@ public class LightEngine {
         final int shift = (index & 1) << 2;
         final int i = index >>> 1;
 
-        LightEngine.blockLightArray[i] = (byte)((LightEngine.blockLightArray[i] & (0xF0 >>> shift)) | (value << shift));
+        LightUtils.blockLightArray[i] = (byte)((LightUtils.blockLightArray[i] & (0xF0 >>> shift)) | (value << shift));
     }
 
     public static void setSkyLight(final int index, final int value) {
         final int shift = (index & 1) << 2;
         final int i = index >>> 1;
 
-        LightEngine.skyLightArray[i] = (byte)((LightEngine.skyLightArray[i] & (0xF0 >>> shift)) | (value << shift));
+        LightUtils.skyLightArray[i] = (byte)((LightUtils.skyLightArray[i] & (0xF0 >>> shift)) | (value << shift));
     }
 
 }

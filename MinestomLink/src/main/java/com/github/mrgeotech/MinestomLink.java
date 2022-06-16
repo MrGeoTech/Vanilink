@@ -1,6 +1,6 @@
 package com.github.mrgeotech;
 
-import com.github.mrgeotech.lighting.LightEngine;
+import com.github.mrgeotech.lighting.LightUtils;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.event.player.PlayerLoginEvent;
@@ -12,8 +12,6 @@ import net.minestom.server.world.DimensionType;
 import net.minestom.server.world.biomes.Biome;
 import net.minestom.server.world.biomes.BiomeEffects;
 import net.minestom.server.world.biomes.BiomeManager;
-
-import java.io.IOException;
 
 public class MinestomLink extends Extension {
 
@@ -89,10 +87,7 @@ public class MinestomLink extends Extension {
     @Override
     public void initialize() {
         System.out.println("Extension loading...");
-        try {
-            ConfigHandler.init();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (!ConfigUtils.init()) {
             MinecraftServer.stopCleanly();
         }
 
@@ -117,7 +112,7 @@ public class MinestomLink extends Extension {
             event.getPlayer().setRespawnPoint(spawn);
         });
         MinecraftServer.getSchedulerManager().scheduleTask(
-                () -> LightEngine.recalculateInstance(container), TaskSchedule.tick(1), TaskSchedule.tick(1));
+                () -> LightUtils.recalculateInstance(container), TaskSchedule.tick(1), TaskSchedule.tick(1));
         System.out.println("Extension loaded!");
     }
 
