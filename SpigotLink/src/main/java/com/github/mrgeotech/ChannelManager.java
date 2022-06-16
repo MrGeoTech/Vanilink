@@ -5,7 +5,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.ChunkSnapshot;
 import org.bukkit.Material;
-import org.bukkit.block.Biome;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;

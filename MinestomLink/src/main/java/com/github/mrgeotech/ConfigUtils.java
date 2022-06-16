@@ -33,7 +33,8 @@ public class ConfigUtils {
                     ips.put(new InetSocketAddress(ip[0], Integer.parseInt(ip[1])), 0);
                 }
                 System.out.println("Found ips: " + Arrays.toString(ips.keySet().toArray(new InetSocketAddress[0])));
-                if (ips.size() < 1) throw new NullPointerException();
+                if (ips.size() < 1)
+                    return false;
             } catch (Exception e) {
                 System.err.println("An error occurred reading your vanilla ips! Please check that there is at least one ip and that they follow the format of '<address>:<port>'!");
                 MinecraftServer.stopCleanly();
