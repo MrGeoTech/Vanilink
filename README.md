@@ -1,3 +1,4 @@
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/588f5c6965ae485f829da4395b24fcab)](https://www.codacy.com/gh/MrGeoTech/Vanilink/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=MrGeoTech/Vanilink&amp;utm_campaign=Badge_Grade)
 # Vanilink
 Link your Minestom and Vanilla server to get accurate terrain.
 # How to use
