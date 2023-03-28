@@ -4,8 +4,13 @@ import com.github.luben.zstd.Zstd.decompress
 import com.karangandhi.networking.TCP.Connection
 import com.karangandhi.networking.TCP.TCPClient
 import com.karangandhi.networking.utils.Message
+import net.minestom.server.coordinate.Point
 
-class ClientImpl(address: String, port: Int): TCPClient(address, port, true) {
+class ClientImpl(
+    address: String,
+    port: Int,
+    private val secret: String
+): TCPClient(address, port, true) {
 
     private var callback: (String) -> Unit = {}
 
@@ -18,8 +23,8 @@ class ClientImpl(address: String, port: Int): TCPClient(address, port, true) {
             }
             MessageType.CHUNK_DATA -> {
                 val data = message.messageBody as ByteArray
-                val compressedLength = data.sliceArray(0..3).toInt()
-                val decompressedLength = data.sliceArray(4..7).toInt()
+                val compressedLength = data.getInt(0)
+                val decompressedLength = data.getInt(4)
                 val compressedData = data.sliceArray(8 until 8 + compressedLength)
                 val decompressedData = decompress(compressedData, decompressedLength)
                 callback(decompressedData.decodeToString())
@@ -28,7 +33,7 @@ class ClientImpl(address: String, port: Int): TCPClient(address, port, true) {
     }
 
     override fun onConnected(): Boolean {
-        this.sendMessage(Message(MessageType.HANDSHAKE, "secret"))
+        this.sendMessage(Message(MessageType.HANDSHAKE, secret))
         return true
     }
 
@@ -36,7 +41,15 @@ class ClientImpl(address: String, port: Int): TCPClient(address, port, true) {
         println("Disconnected from server")
     }
 
-    fun setCallback(callback: (String) -> Unit) {
+    fun requestBlockData(start: Point, end: Point, callback: (String) -> Unit) {
+        val request = IntArray(6)
+        request[0] = start.blockX()
+        request[1] = start.blockY()
+        request[2] = start.blockZ()
+        request[3] = end.blockX()
+        request[4] = end.blockY()
+        request[5] = end.blockZ()
+        this.sendMessage(Message(MessageType.CHUNK_DATA, request))
         this.callback = callback
     }
 

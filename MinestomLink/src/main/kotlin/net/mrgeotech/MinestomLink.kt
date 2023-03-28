@@ -7,12 +7,13 @@ import net.minestom.server.tag.Tag
 import net.minestom.server.timer.TaskSchedule
 import net.mrgeotech.biomes.initBiomes
 import net.mrgeotech.network.ChannelManager
+import net.mrgeotech.network.ClientImpl
 import java.net.InetSocketAddress
 import java.nio.channels.SocketChannel
 
 class MinestomLink: Extension() {
 
-    private val channelManager = ChannelManager()
+    private val clients: MutableList<ClientImpl> = mutableListOf()
 
     override fun initialize() {
         instance = this
@@ -21,13 +22,7 @@ class MinestomLink: Extension() {
         initBiomes()
 
         val secret = CONFIG.getProperty("secret", "secret")!!
-        val channelsPerAddress = CONFIG.getProperty("channels-per-address", "1").toInt()
-        CONFIG.getStringList("addresses").forEach {
-            val split = it.split(":")
-            val address = InetSocketAddress(split[0], split[1].toInt())
-            for (i in 0 until channelsPerAddress)
-                channelManager.registerNewChannel(SocketChannel.open(address), secret)
-        }
+        registerClients(secret)
 
         MinecraftServer.getSchedulerManager().buildTask(this::checkInstances)
             .repeat(TaskSchedule.seconds(1))
@@ -35,7 +30,7 @@ class MinestomLink: Extension() {
     }
 
     override fun terminate() {
-        channelManager.close()
+        clients.forEach { it.disconnect() }
     }
 
     private fun checkInstances() {
@@ -43,6 +38,15 @@ class MinestomLink: Extension() {
             if (!instance.hasTag(Tag.Boolean("minestomlink"))) return@forEach
             if (instance.generator() is ConnectedChunkLoader) return@forEach
             instance.setGenerator(ConnectedChunkLoader(channelManager))
+        }
+    }
+
+    private fun registerClients(secret: String) {
+        val channelsPerAddress = CONFIG.getProperty("channels-per-address", "1").toInt()
+        CONFIG.getStringList("addresses").forEach {
+            val split = it.split(":")
+            for (i in 0 until channelsPerAddress)
+                clients.add(ClientImpl(split[0], split[1].toInt(), secret))
         }
     }
 
