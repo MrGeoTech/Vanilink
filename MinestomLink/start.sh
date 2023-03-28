@@ -1,0 +1,1 @@
+mv MinestomLink/build/libs/MinestomLink-*.jar extensions/MinestomLink.jar

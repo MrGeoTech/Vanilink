@@ -1,0 +1,3 @@
+port: 10000
+trusted-addresses:
+  - "localhost"
