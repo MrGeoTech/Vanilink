@@ -1,30 +1,30 @@
 package net.mrgeotech
 
 import net.mrgeotech.blockdata.BukkitBlockDataSupplier
+import net.mrgeotech.network.ChunkServer
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
+import java.net.InetSocketAddress
+import javax.net.ssl.SSLContext
 
 class SpigotLink: JavaPlugin() {
 
-    private lateinit var channelManager: ChannelManager
+    private lateinit var chunkServer: ChunkServer
 
     override fun onEnable() {
         saveDefaultConfig()
-        channelManager = ChannelManager(
+
+        chunkServer = ChunkServer(
+            config.getInt("port", 10000),
+            config.getStringList("trusted-addresses").map { InetSocketAddress(it, 10000).address.address },
+            SSLContext.getDefault(),
             BukkitBlockDataSupplier(),
-            config.getString("secret", "secret")!!,
-            config.getStringList("trusted-addresses")
-        ) { task ->
-            Bukkit.getScheduler().runTaskAsynchronously(this, task)
+            this.logger
+        ) {
+            Bukkit.getScheduler().runTask(this, it)
         }
-        channelManager.start(config.getInt("port"))
-        // Start task
-        Bukkit.getScheduler().runTaskTimerAsynchronously(
-            this,
-            channelManager::iterate,
-            1,
-            1
-        )
+
+        Bukkit.getScheduler().runTaskAsynchronously(this, chunkServer::run)
 
         server.getPluginCommand("blockdata")?.setExecutor(BlockDataCommand())
     }
@@ -32,7 +32,8 @@ class SpigotLink: JavaPlugin() {
     override fun onDisable() {
         // Stop task
         Bukkit.getScheduler().cancelTasks(this)
-        channelManager.stop()
+        // Disconnect clients
+        chunkServer.stop()
     }
 
 }

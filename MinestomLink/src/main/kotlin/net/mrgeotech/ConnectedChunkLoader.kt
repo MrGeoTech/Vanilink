@@ -1,26 +1,28 @@
 package net.mrgeotech
 
-import com.github.luben.zstd.Zstd.decompress
-import net.minestom.server.instance.block.Block
 import net.minestom.server.instance.generator.GenerationUnit
 import net.minestom.server.instance.generator.Generator
-import net.minestom.server.world.biomes.Biome
-import net.mrgeotech.biomes.BIOMES
-import net.mrgeotech.network.ChannelManager
-import net.mrgeotech.network.readToBuffer
-import net.mrgeotech.network.toBiome
-import java.nio.ByteBuffer.allocate
+import net.mrgeotech.network.getBlockData
 
-class ConnectedChunkLoader(private val channelManager: ChannelManager): Generator {
+class ConnectedChunkLoader: Generator {
 
     override fun generate(unit: GenerationUnit) {
         val start = unit.absoluteStart()
-        val end = unit.absoluteEnd()
-        println("Generating unit starting at ${start.x()}, ${start.y()}, ${start.z()} and ending at ${end.x()}, ${end.y()}, ${end.z()}. Chunk start ${start.chunkX()}, ${start.chunkZ()}")
+        val size = unit.absoluteEnd()
+        println("Generating unit starting at ${start.x()}, ${start.y()}, ${start.z()} with a size of ${size.x()}, ${size.y()}, ${size.z()}. Chunk start ${start.chunkX()}, ${start.chunkZ()}")
         val startTime = System.currentTimeMillis()
-
+        val data = getBlockData(start, size)
+        var index = 0
+        for (x in 0 until size.blockX()) {
+            for (y in start.blockY() until size.blockY()) {
+                for (z in 0 until size.blockZ()) {
+                    unit.modifier().setBlock(x, y, z, data.keys.elementAt(index))
+                    unit.modifier().setBiome(x, y, z, data.values.elementAt(index))
+                    index++
+                }
+            }
+        }
         val endTime = System.currentTimeMillis()
         println("Finished generating unit. Total time: ${endTime - startTime}ms")
     }
-
 }

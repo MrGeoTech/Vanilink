@@ -14,6 +14,7 @@ dependencies {
     testImplementation(kotlin("test"))
     implementation("com.github.Minestom:Minestom:067227421f")
     implementation("com.github.luben:zstd-jni:1.5.4-1")
+    implementation("com.github.marianobarrios:tls-channel:0.7.0")
     implementation("com.github.Karan-Gandhi:Java-Networking-Library:v1.1")
 }
 

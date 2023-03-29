@@ -17,7 +17,7 @@ dependencies {
     testImplementation(kotlin("test"))
     implementation(kotlin("stdlib-jdk8"))
     implementation("com.github.luben:zstd-jni:1.5.4-1")
-    implementation("com.github.Karan-Gandhi:Java-Networking-Library:v1.1")
+    implementation("com.github.marianobarrios:tls-channel:0.7.0")
     compileOnly("org.spigotmc:spigot-api:1.19.3-R0.1-SNAPSHOT")
 }
 

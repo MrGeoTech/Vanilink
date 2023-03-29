@@ -2,7 +2,7 @@ import com.github.luben.zstd.Zstd.decompress
 import net.minestom.server.instance.block.Block
 import net.mrgeotech.network.ChannelManager
 import net.mrgeotech.network.readToBuffer
-import net.mrgeotech.toBlock
+import net.mrgeotech.network.toBlockData
 import network.ChunkRequestTestServer
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -15,11 +15,11 @@ class TestChannelManager {
 
     @Test
     fun testStringToBlock() {
-        assertEquals(Block.AIR, "minecraft:air".toBlock())
-        assertEquals(Block.STONE, "stone".toBlock())
-        assertEquals(Block.OAK_LOG.withProperties(mapOf(Pair("axis", "z"))), "minecraft:oak_log[axis=z]".toBlock())
+        assertEquals(Block.AIR, "minecraft:air".toBlockData())
+        assertEquals(Block.STONE, "stone".toBlockData())
+        assertEquals(Block.OAK_LOG.withProperties(mapOf(Pair("axis", "z"))), "minecraft:oak_log[axis=z]".toBlockData())
 
-        assertThrows<IllegalArgumentException> { "".toBlock() }
+        assertThrows<IllegalArgumentException> { "".toBlockData() }
     }
 
     @Test
@@ -61,7 +61,7 @@ class TestChannelManager {
         decompress(uncompressed, compressed)
 
         val blockString = uncompressed.decodeToString()
-        val blocks = blockString.split("|").map { it.toBlock() }
+        val blocks = blockString.split("|").map { it.toBlockData() }
         assertEquals(10, blocks.size)
         assertEquals(Block.STONE, blocks[0])
         assertEquals(Block.STONE, blocks[1])
